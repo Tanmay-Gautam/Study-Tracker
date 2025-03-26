@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script>navigator.serviceWorker.register("service-worker.js")</script>
+    <link rel="manifest" href="manifest.json" />
+</head>
+
+<body>
+    <div id="videoContainer">
+        <video id="video"></video>
+    </div>
+    <div class="buttons">
+        <button id="toggleCam">Toggle Camera</button>
+        <button id="exportJson">Export JSON</button>
+    </div>
+
+    <script src="./index.js"></script>
+
+</body>
+
+</html>
