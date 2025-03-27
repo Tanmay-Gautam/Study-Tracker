@@ -1,9 +1,11 @@
 const video = document.getElementById('video');
-const toggleCam = document.getElementById('toggleCam');
 const exportJson = document.getElementById('exportJson');
+const camDevices = document.getElementById('camDevices');
+const startStopBtn = document.getElementById('startStop');
+const clearDataBtn = document.getElementById('clearData');
 
 let camMode = false;
-let intervalId = null; // Store the interval ID globally
+// let intervalId = null; // Store the interval ID globally
 
 // open or create a indexedDB database called 'predictionDB'
 const openDB = () => {
@@ -27,13 +29,13 @@ const openDB = () => {
     });
 };
 
-const savePredictionToDB = async (predictedClass) => {
+const savePredictionToDB = async (predictedClass, exactProbabilities) => {
     const db = await openDB();
     const transaction = db.transaction("predictions", "readwrite");
     const store = transaction.objectStore("predictions");
 
     const timestamp = new Date().toISOString(); // Store current time in ISO format
-    const predictionData = { time: timestamp, predictedClass };
+    const predictionData = { time: timestamp, predictedClass, exactProbabilities: exactProbabilities };
 
     store.add(predictionData); // Add the data to the store
 
@@ -63,57 +65,30 @@ async function predict(model) {
         const class1Probability = result[0][0]; // Probability for Class 1
         const class2Probability = result[0][1]; // Probability for Class 2
 
-        console.log(`Class 1 Probability: ${class1Probability}`);
-        console.log(`Class 2 Probability: ${class2Probability}`);
+        // console.log(`Class 1 Probability: ${class1Probability}`);
+        // console.log(`Class 2 Probability: ${class2Probability}`);
 
         // Interpret the result
+        const exactProbabilities = { class1Probability, class2Probability };
         const predictedClass = class1Probability > class2Probability ? 'Class 1' : 'Class 2';
-        console.log('Prediction: ' + predictedClass);
+        // console.log('Prediction: ' + predictedClass);
 
         // Save the prediction to IndexedDB
-        savePredictionToDB(predictedClass);
+        savePredictionToDB(predictedClass, exactProbabilities);
     }).catch(error => {
         console.error("Error processing prediction:", error);
     });
 }
 
-
-
-// running the whole thing
-loadModels().then(model => {
-    toggleCam.addEventListener('click', () => {
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                camMode = !camMode; // Toggle camMode
-                if (camMode) {
-                    video.srcObject = stream;
-                    video.play();
-                    video.onloadeddata = () => {
-                        // Clear any existing interval before starting a new one
-                        if (intervalId) {
-                            clearInterval(intervalId);
-                        }
-                        intervalId = setInterval(() => {
-                            if (!camMode) {
-                                clearInterval(intervalId); // Stop predictions when camMode is off
-                                intervalId = null; // Reset intervalId
-                            } else {
-                                predict(model);
-                            }
-                        }, 2000); // Call predict every 2 seconds
-                    };
-                } else {
-                    // Stop the video stream and clear the interval
-                    video.srcObject = null;
-                    if (intervalId) {
-                        clearInterval(intervalId);
-                        intervalId = null; // Reset intervalId
-                    }
-                }
-            })
-            .catch(error => {
-                console.error("Error accessing the camera:", error);
-            });
+// camDevices is a select element in the HTML inside that we will list all the available cameras
+navigator.mediaDevices.enumerateDevices().then(devices => {
+    devices.forEach(device => {
+        if (device.kind === 'videoinput') {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Camera ${camDevices.length + 1}`;
+            camDevices.appendChild(option);
+        }
     });
 });
 
@@ -138,4 +113,65 @@ exportJson.addEventListener('click', async () => {
 
         URL.revokeObjectURL(url);
     }
+});
+
+clearDataBtn.addEventListener('click', async () => {
+
+    if (!confirm('Are you sure you want to clear all data?')) {
+        return
+    }
+
+    // Clear all data from the indexedDB
+    const db = await openDB();
+    const transaction = db.transaction("predictions", "readwrite");
+    const store = transaction.objectStore("predictions");
+    const request = store.clear();
+
+    request.onsuccess = () => {
+        alert('Data cleared from database.');
+    }
+});
+
+async function startCamera(model) {
+    constraints = {
+        video: {
+            deviceId: camDevices.value ? { exact: camDevices.value } : undefined
+        },
+        audio: false
+    }
+
+    console.log('Starting camera with constraints:', constraints.video);
+
+    if (constraints.video.deviceId === undefined) {
+        alert('Please select a camera device.');
+        return;
+    }
+
+    camMode = !camMode;
+    navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+        if (camMode) {
+            startStopBtn.innerText = 'Stop Camera';
+            camDevices.disabled = true;
+            video.srcObject = stream;
+            video.play();
+            video.onloadeddata = () => {
+                setInterval(() => {
+                    predict(model);
+                }, 2000);
+            };
+        } else {
+            startStopBtn.innerText = 'Start Camera';
+            video.srcObject = null;
+            camDevices.disabled = false;
+        }
+    })
+
+};
+
+
+loadModels().then(model => {
+    startStopBtn.innerText = 'Start Camera';
+    startStopBtn.addEventListener('click', () => {
+        startCamera(model);
+    });
 });

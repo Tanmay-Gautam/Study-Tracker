@@ -8,15 +8,36 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
     <script>navigator.serviceWorker.register("service-worker.js")</script>
     <link rel="manifest" href="manifest.json" />
+
+    <style>
+        .buttons {
+            display: flex;
+            justify-content: space-evenly;
+        }
+        select, button{
+            padding: 1em;
+            font-size: 1em;
+            border-radius: 5px;
+            color: black;
+            border: gainsboro 1px solid;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+
 </head>
 
 <body>
+    <div class="buttons">
+        <select name="cameras" id="camDevices">
+            <option value="">select camera</option>
+        </select>
+        <button id="startStop">loading...</button>
+        <button id="exportJson">Export JSON</button>
+        <button id="clearData">Clear Data</button>
+    </div>
     <div id="videoContainer">
         <video id="video"></video>
-    </div>
-    <div class="buttons">
-        <button id="toggleCam">Toggle Camera</button>
-        <button id="exportJson">Export JSON</button>
     </div>
 
     <script src="./index.js"></script>
