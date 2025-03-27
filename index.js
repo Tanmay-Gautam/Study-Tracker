@@ -80,17 +80,36 @@ async function predict(model) {
     });
 }
 
-// camDevices is a select element in the HTML inside that we will list all the available cameras
-navigator.mediaDevices.enumerateDevices().then(devices => {
-    devices.forEach(device => {
-        if (device.kind === 'videoinput') {
+// Request media permissions and list available devices
+async function listCameras() {
+    try {
+        // Request access to the camera to populate device labels
+        await navigator.mediaDevices.getUserMedia({ video: true });
+
+        // Enumerate devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        camDevices.innerHTML = ''; // Clear existing options
+
+        devices.forEach(device => {
+            if (device.kind === 'videoinput') {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${camDevices.length + 1}`;
+                camDevices.appendChild(option);
+            }
+        });
+
+        if (camDevices.options.length === 0) {
             const option = document.createElement('option');
-            option.value = device.deviceId;
-            option.text = device.label || `Camera ${camDevices.length + 1}`;
+            option.text = 'No cameras found';
             camDevices.appendChild(option);
         }
-    });
-});
+    } catch (error) {
+        console.error('Error accessing media devices:', error);
+        alert('Unable to access camera. Please check permissions or use HTTPS.');
+    }
+}
+
 
 exportJson.addEventListener('click', async () => {
     // export the data from indexedDB as JSON file
@@ -168,7 +187,7 @@ async function startCamera(model) {
 
 };
 
-
+listCameras();
 loadModels().then(model => {
     startStopBtn.innerText = 'Start Camera';
     startStopBtn.addEventListener('click', () => {
